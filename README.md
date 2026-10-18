@@ -14,20 +14,8 @@ The combined runtime has reached `Starting New Game` and `The Cousins Bellic` on
 
 This repository is meant to be a friendly place to follow that work, reproduce it, and help move it forward.
 
-## Getting started
-
-You need a homebrew-capable Nintendo Switch, a devkitPro/libnx development environment, and your own legally obtained Xbox 360 copy of GTA IV with its matching title update. Game files, saves, firmware, keys, and other copyrighted material are not included.
-
-The Switch toolchain and platform notes are documented in `README-SWITCH.md` and `docs/switch-port/`. A normal source build looks like this:
-
-```sh
-cmake -S . -B out/build/switch-tu8-vulkan -G Ninja \
-  -DCMAKE_TOOLCHAIN_FILE=toolchains/switch-libnx.cmake \
-  -DCMAKE_BUILD_TYPE=Release
-ninja -C out/build/switch-tu8-vulkan
-```
-
-For a clean rebuild after changing public headers or class layouts, remove the selected build directory first.
+## Remember
+Thsi is only a WIP and is local for now until i personally try and get a fully running build :)
 
 ## Thanks
 
