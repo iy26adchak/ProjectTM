@@ -1,22 +1,24 @@
 # ProjectTM
 
-ProjectTM is a Switch homebrew port of the Xbox 360 version of Grand Theft Auto IV (TU8).
+ProjectTM is a community effort to bring the Xbox 360 version of Grand Theft Auto IV to Nintendo Switch homebrew.
 
-The project started from the Theft4-NX runtime and adds the ProjectTM Switch launcher, platform fixes, audio work, and compatibility changes. It uses statically recompiled PowerPC game code together with the ReXGlue runtime and a Vulkan/NVK renderer.
+The project began as a Switch-specific runtime built around the recompiled game code. That work taught us a lot about the Xbox memory layout, graphics commands, frame timing, streaming, and the services GTA IV expects. It also gave us real rendered frames, loading screens, and a large amount of useful hardware experience.
 
-This is an unfinished research project. It is not an emulator, and it is not a finished or generally playable port. The Switch build has reached the opening mission transition on test hardware; stability, performance, audio, input, saves, and later gameplay are still being worked on.
+Over time, it became clear that rebuilding the entire compatibility layer from scratch was slowing us down. Theft4-NX already had a working ARM64 runtime and had reached the opening mission transition on hardware. ProjectTM therefore moved to that codebase as its foundation. The goal did not change: ProjectTM keeps its own name, Switch focus, fixes, experiments, and direction while building on a runtime that has already solved much of the difficult startup work.
 
-## What you need
+That transition is the story behind this repository. It brings together the original ProjectTM work, the Theft4-NX runtime, ReXGlue services, and lessons learned from the PC, Android, iOS, and other Switch recompilation projects.
 
-- A homebrew-capable Nintendo Switch.
-- devkitPro, devkitA64, libnx, CMake, and Ninja for building.
-- Your own legally obtained Xbox 360 copy of GTA IV and its matching title update.
+## Where it is now
 
-Game files, title updates, firmware, keys, saves, logs, and prebuilt payloads are not included. See `.gitignore` before adding local files.
+The combined runtime has reached `Starting New Game` and `The Cousins Bellic` on tested Switch hardware, with real game rendering and audio in the working reference path. The next work is making that path reliable and practical: improving audio consistency, renderer speed, input, saves, and the transition into the playable mission.
 
-## Building the Switch version
+This repository is meant to be a friendly place to follow that work, reproduce it, and help move it forward.
 
-The normal build uses the Switch toolchain in this repository:
+## Getting started
+
+You need a homebrew-capable Nintendo Switch, a devkitPro/libnx development environment, and your own legally obtained Xbox 360 copy of GTA IV with its matching title update. Game files, saves, firmware, keys, and other copyrighted material are not included.
+
+The Switch toolchain and platform notes are documented in `README-SWITCH.md` and `docs/switch-port/`. A normal source build looks like this:
 
 ```sh
 cmake -S . -B out/build/switch-tu8-vulkan -G Ninja \
@@ -25,13 +27,12 @@ cmake -S . -B out/build/switch-tu8-vulkan -G Ninja \
 ninja -C out/build/switch-tu8-vulkan
 ```
 
-For a clean rebuild, remove the selected build directory first. This matters after changing public headers or class layouts.
+For a clean rebuild after changing public headers or class layouts, remove the selected build directory first.
 
-More Switch-specific notes are in `README-SWITCH.md` and `docs/switch-port/`.
+## Thanks
 
-## Credits and license
+ProjectTM stands on the work of many projects and contributors. The separate [`CREDITS.md`](CREDITS.md) file lists them and explains how they fit into the project.
 
-ProjectTM is released under GPL-3.0 where applicable. The separate [`CREDITS.md`](CREDITS.md) file lists the projects and people whose work made this possible. Vendored dependencies keep their own licenses; see [`COPYING`](COPYING).
+ProjectTM is released under GPL-3.0 where applicable. Vendored dependencies keep their own licenses; see [`COPYING`](COPYING).
 
 ProjectTM is not affiliated with Rockstar Games, Take-Two Interactive, Microsoft, Nintendo, or Apple.
-
