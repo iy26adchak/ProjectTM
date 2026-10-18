@@ -64,8 +64,10 @@ class SwitchAudioDriver : public AudioDriver {
   static const uint32_t kOutputFrameSize =
       kChannelSamples * kOutputChannels * kOutputSampleBytes;
 
-  // Double-buffer wave buffers for gapless playback.
-  static const int kWaveBufCount = 2;
+  // Four 5.33 ms wave buffers give audren enough runway when a Vulkan submit
+  // briefly occupies the CPU. Two buffers audibly underrun under rendering
+  // load during the slideshow and mission transition.
+  static const int kWaveBufCount = 4;
   AudioDriverWaveBuf wavebufs_[kWaveBufCount] = {};
   int16_t* pcm_buffers_[kWaveBufCount] = {};
   int current_buf_ = 0;

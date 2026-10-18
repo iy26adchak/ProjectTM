@@ -1,4 +1,9 @@
-# Theft4 for Nintendo Switch (homebrew port, work in progress)
+# ProjectTM for Nintendo Switch (homebrew fork, work in progress)
+
+This tree is the GPL-3.0 ProjectTM fork. Its direct base is Theft4-NX and its
+full lineage and attribution are recorded in [PROJECTTM.md](PROJECTTM.md).
+Upstream historical documentation below is retained because it describes the
+runtime architecture ProjectTM inherits.
 
 This branch (`switch-port`) ports the Theft4 runtime to the Nintendo Switch as
 **native homebrew**: an NRO built with devkitPro/libnx that runs on Horizon

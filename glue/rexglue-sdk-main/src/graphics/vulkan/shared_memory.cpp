@@ -67,9 +67,10 @@ bool VulkanSharedMemory::Initialize() {
     if (dfn.vkCreateBuffer(device, &buffer_create_info, nullptr, &buffer_) == VK_SUCCESS) {
       VkMemoryRequirements buffer_memory_requirements;
       dfn.vkGetBufferMemoryRequirements(device, buffer_, &buffer_memory_requirements);
-      if (rex::bit_scan_forward(buffer_memory_requirements.memoryTypeBits &
-                                    vulkan_device->memory_types().device_local,
-                                &buffer_memory_type_)) {
+      buffer_memory_type_ = ui::vulkan::util::ChooseMemoryType(
+          vulkan_device->memory_types(), buffer_memory_requirements.memoryTypeBits,
+          ui::vulkan::util::MemoryPurpose::kDeviceLocal);
+      if (buffer_memory_type_ != UINT32_MAX) {
         uint32_t allocation_size_log2;
         rex::bit_scan_forward(std::max(uint64_t(buffer_memory_requirements.alignment), uint64_t(1)),
                               &allocation_size_log2);
@@ -114,11 +115,12 @@ bool VulkanSharedMemory::Initialize() {
     }
     VkMemoryRequirements buffer_memory_requirements;
     dfn.vkGetBufferMemoryRequirements(device, buffer_, &buffer_memory_requirements);
-    if (!rex::bit_scan_forward(
-            buffer_memory_requirements.memoryTypeBits & vulkan_device->memory_types().device_local,
-            &buffer_memory_type_)) {
+    buffer_memory_type_ = ui::vulkan::util::ChooseMemoryType(
+        vulkan_device->memory_types(), buffer_memory_requirements.memoryTypeBits,
+        ui::vulkan::util::MemoryPurpose::kDeviceLocal);
+    if (buffer_memory_type_ == UINT32_MAX) {
       REXGPU_ERROR(
-          "Shared memory: Failed to get a device-local Vulkan memory type for "
+          "Shared memory: Failed to get a compatible Vulkan memory type for "
           "the buffer");
       Shutdown();
       return false;

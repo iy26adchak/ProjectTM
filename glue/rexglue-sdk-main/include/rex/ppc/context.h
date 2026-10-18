@@ -286,6 +286,12 @@ struct alignas(0x40) PPCContext {
   PPCRegister ctr;
   PPCXERRegister xer;
   PPCRegister reserved;
+  uint32_t reserved_address = 0;
+  uint32_t reserved_size = 0;
+  uint32_t reserved_bitmap_word = 0;
+  uint64_t reserved_bitmap_mask = 0;
+  bool reserved_global_acquired = false;
+  bool reserved_valid = false;
   uint32_t msr = 0x200A000;
   PPCCRRegister cr0;
   PPCCRRegister cr1;
@@ -495,3 +501,38 @@ struct alignas(0x40) PPCContext {
     std::memcpy(&v64, src, 64 * sizeof(PPCVRegister));
   }
 };
+
+namespace rex::ppc {
+
+inline void ReleaseReservation(PPCContext& ctx) {
+  ctx.reserved_global_acquired = false;
+  ctx.reserved_valid = false;
+}
+
+inline bool AcquireReservation(PPCContext& ctx, uint32_t address, uint32_t size) {
+  ReleaseReservation(ctx);
+  ctx.reserved_address = address;
+  ctx.reserved_size = size;
+  ctx.reserved_bitmap_word = 0;
+  ctx.reserved_bitmap_mask = 0;
+  ctx.reserved_global_acquired = false;
+  ctx.reserved_valid = true;
+  return true;
+}
+
+inline bool ReservationMatches(const PPCContext& ctx, uint32_t address) {
+  return ctx.reserved_valid && ctx.reserved_address == address;
+}
+
+inline void ImportReservation(PPCContext& ctx, uint32_t address, uint64_t value) {
+  ReleaseReservation(ctx);
+  ctx.reserved.u64 = value;
+  ctx.reserved_address = address;
+  ctx.reserved_size = 0;
+  ctx.reserved_bitmap_word = 0;
+  ctx.reserved_bitmap_mask = 0;
+  ctx.reserved_global_acquired = false;
+  ctx.reserved_valid = true;
+}
+
+}  // namespace rex::ppc

@@ -137,7 +137,7 @@ REXCVAR_DEFINE_BOOL(gta4_native_async_pipeline_no_wait, false,
                     "GTA IV/Graphics/Native Renderer",
                     "Skip a draw temporarily while its graphics pipeline compiles")
     .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
-REXCVAR_DEFINE_BOOL(gta4_trace_vector_fonts, true, "GTA IV/Diagnostics",
+REXCVAR_DEFINE_BOOL(gta4_trace_vector_fonts, false, "GTA IV/Diagnostics",
                     "Log the guest-to-Vulkan vector-font data path with bounded draw details");
 REXCVAR_DEFINE_BOOL(gta4_native_spatial_aa, true, "GTA IV/Graphics/Anti-Aliasing",
                     "Legacy compatibility toggle for the native spatial edge resolve");

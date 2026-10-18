@@ -19,7 +19,7 @@
 #include <rex/system/xthread.h>
 #include <rex/thread.h>
 
-REXCVAR_DEFINE_BOOL(nx_null_audio, true, "Audio",
+REXCVAR_DEFINE_BOOL(nx_null_audio, false, "Audio",
                     "Without an audio output, give the runtime the null audio system "
                     "(rex/audio/null_audio_system.h): the guest audio engine is driven at the "
                     "real rate and its frames are dropped. false: no audio system, "

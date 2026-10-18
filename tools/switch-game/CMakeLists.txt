@@ -13,7 +13,7 @@
 # At most 3 jobs: a generated file takes 1-2 GB of RAM in GCC.
 
 cmake_minimum_required(VERSION 3.25)
-project(switch-game VERSION 0.1.0 LANGUAGES C CXX ASM)
+project(switch-game VERSION 0.2.0 LANGUAGES C CXX ASM)
 
 if(NOT NINTENDO_SWITCH OR NOT LIBERTY_RECOMP_TARGET_PLATFORM STREQUAL "switch")
     message(FATAL_ERROR "switch-game is Switch-only: configure with toolchains/switch-libnx.cmake")
@@ -34,6 +34,8 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
 # time, the null GPU stays the default. Off for the run binaries: configure a
 # separate build directory with -DTHEFT4_SWITCH_GAME_VULKAN=ON.
 option(THEFT4_SWITCH_GAME_VULKAN "Link ReXGlue's Vulkan backend and NVK (cvar nx_gpu)" OFF)
+set(THEFT4_SWITCH_NVK_SDK "" CACHE PATH
+    "Switch NVK SDK root containing lib/libvulkan.a (optional; otherwise devkitPro portlibs)")
 set(REXGLUE_SWITCH_VULKAN ${THEFT4_SWITCH_GAME_VULKAN} CACHE BOOL "" FORCE)
 add_subdirectory("${THEFT4_ROOT}/glue/rexglue-sdk-main" rexglue-sdk)
 
@@ -60,7 +62,8 @@ add_custom_command(
     VERBATIM
 )
 
-add_executable(switch-game main.cpp nx_input.cpp nx_clocks.cpp nx_profiler.cpp nx_threads.cpp
+add_executable(switch-game main.cpp tu8_projecttm_compat.cpp
+    nx_input.cpp nx_clocks.cpp nx_profiler.cpp nx_threads.cpp
     "${THEFT4_ROOT}/tools/switch-common/nx_exit.cpp"
     "${MISSING_IMPORTS_CPP}" ${GENERATED_SOURCES})
 target_compile_features(switch-game PRIVATE cxx_std_23)
@@ -125,9 +128,27 @@ if(THEFT4_SWITCH_GAME_VULKAN)
     target_link_options(switch-game PRIVATE
         "LINKER:--whole-archive,$<TARGET_FILE:rexgpu-xenos-nx>,--no-whole-archive")
     set_property(TARGET switch-game APPEND PROPERTY LINK_DEPENDS "$<TARGET_FILE:rexgpu-xenos-nx>")
-    target_link_directories(switch-game PRIVATE "${DEVKITPRO}/portlibs/switch/lib")
-    target_link_libraries(switch-game PRIVATE $<LINK_ONLY:rexgpu-xenos-nx>
-        -Wl,--start-group vulkan expat zstd z nx -Wl,--end-group)
+    if(THEFT4_SWITCH_NVK_SDK)
+        set(THEFT4_SWITCH_VULKAN_ARCHIVE "${THEFT4_SWITCH_NVK_SDK}/lib/libvulkan.a")
+        if(NOT EXISTS "${THEFT4_SWITCH_VULKAN_ARCHIVE}")
+            message(FATAL_ERROR
+                "THEFT4_SWITCH_NVK_SDK has no lib/libvulkan.a: ${THEFT4_SWITCH_NVK_SDK}")
+        endif()
+        message(STATUS "Switch NVK archive: ${THEFT4_SWITCH_VULKAN_ARCHIVE}")
+    else()
+        set(THEFT4_SWITCH_VULKAN_ARCHIVE vulkan)
+        target_link_directories(switch-game PRIVATE "${DEVKITPRO}/portlibs/switch/lib")
+    endif()
+    if(THEFT4_SWITCH_NVK_SDK)
+        # The published Switch NVK archive is self-contained and has no
+        # unresolved Expat or Zstd symbols.  Requiring those optional
+        # portlibs here prevents otherwise valid SDK-only builds from linking.
+        target_link_libraries(switch-game PRIVATE $<LINK_ONLY:rexgpu-xenos-nx>
+            -Wl,--start-group "-Wl,${THEFT4_SWITCH_VULKAN_ARCHIVE}" z nx -Wl,--end-group)
+    else()
+        target_link_libraries(switch-game PRIVATE $<LINK_ONLY:rexgpu-xenos-nx>
+            -Wl,--start-group "${THEFT4_SWITCH_VULKAN_ARCHIVE}" expat zstd z nx -Wl,--end-group)
+    endif()
     # Run 21: NVK's nvdrv calls go through main.cpp's counters first (fence
     # waits and queries, kickoffs, nvmaps), as sa2-nx's switch_perf does.
     target_link_options(switch-game PRIVATE
@@ -146,11 +167,11 @@ target_link_options(switch-game PRIVATE
     "-Wl,--wrap=threadCreate,--wrap=threadClose,--wrap=pthread_create")
 
 nx_generate_nacp(switch-game.nacp
-    NAME "Theft4 switch-game"
-    AUTHOR "Theft4"
+    NAME "ProjectTM TU8"
+    AUTHOR "ProjectTM contributors"
     VERSION "${PROJECT_VERSION}"
 )
 nx_create_nro(switch-game
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/switch-game.nro"
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ProjectTM-0.2.0-TU8-mission-transition.nro"
     NACP switch-game.nacp
 )

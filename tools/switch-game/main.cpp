@@ -1,13 +1,12 @@
-// switch-game: first NRO of the game on Nintendo Switch, without graphics
-// (docs/switch-port/06-game-boot-plan.md section 4).
+// ProjectTM TU8 full-runtime Nintendo Switch entry point.
 //
-//   1. durable log (sdmc:/switch/theft4/game.log) and crash log
-//      (sdmc:/switch/theft4/game-crash.log), module base for crash reports
-//   2. game files read in place from sdmc:/switch/theft4/game (default.xex;
-//      no default.xexp: option C of the plan, European base executable)
-//   3. rex::Runtime with the HLE kernel and no graphics, audio or input;
-//      Setup(PPCImageConfig), LoadXexImage, PrepareModuleLaunch
-//   4. the game's main thread resumed at the XEX entry point
+//   1. durable logs under sdmc:/switch/ProjectTM
+//   2. game: mounted from sdmc:/switch/ProjectTM/game
+//   3. USA default.xex plus TU8 default.xexp loaded from
+//      sdmc:/switch/ProjectTM/tu8
+//   4. full ReXGlue HLE runtime, input/profile/save services, XMA decoding,
+//      Switch audren stereo output and the Vulkan/NVK Xenos renderer
+//   5. the game's main thread resumed at the TU8 XEX entry point
 //
 // The run stops explicitly, and says so in the log, at the first Xbox kernel
 // export or runtime function this build lacks on Switch
@@ -89,6 +88,7 @@
 #include <rex/diagnostics/policy.h>
 #include <rex/exception_handler.h>
 #include <rex/filesystem.h>
+#include <rex/filesystem/devices/host_path_device.h>
 #include <rex/kernel/init.h>
 #include <rex/logging.h>
 #include <rex/memory/utils.h>
@@ -98,6 +98,7 @@
 #include <rex/system/kernel_state.h>
 #include <rex/system/xfile.h>
 #include <rex/audio/null_audio_system.h>
+#include <rex/audio/switch/switch_audio_system.h>
 #include <rex/system/null_graphics_system.h>
 #include <rex/system/thread_state.h>
 #include <rex/system/user_module.h>
@@ -123,14 +124,14 @@
 #include <rex/ui/windowed_app_context_nx.h>
 #endif
 
-REXCVAR_DEFINE_BOOL(nx_null_gpu, true, "Switch",
+REXCVAR_DEFINE_BOOL(nx_null_gpu, false, "Switch",
                     "Give the runtime the null GPU (rex/system/null_graphics_system.h): the "
                     "Vd* exports work and the ring is consumed without drawing. false: the "
                     "run stops at the first graphics export, as up to run 13");
 REXCVAR_DEFINE_BOOL(nx_input, true, "Switch",
                     "Give the game the Switch controller as its 360 pad (nx_input.h). false: "
                     "no input system, XamInputGetState says not connected (run 14)");
-REXCVAR_DEFINE_STRING(nx_gpu, "null", "Switch",
+REXCVAR_DEFINE_STRING(nx_gpu, "vulkan", "Switch",
                       "GPU: null = the null GPU (nx_null_gpu = false: none); vulkan = ReXGlue's "
                       "Vulkan backend on NVK, presenting on the default NWindow with the console "
                       "closed (only in a build with THEFT4_SWITCH_GAME_VULKAN; 06 section 24)");
@@ -139,7 +140,7 @@ REXCVAR_DEFINE_BOOL(nx_log_durable, false, "Switch",
                     "close on the thread that logs: slow on the SD, for crash hunting); false: a "
                     "writer thread appends the lines once a second, and the exit steps, "
                     "terminations, the stop and faults write them at once (run 19)");
-REXCVAR_DEFINE_BOOL(nx_trace_exports, true, "Switch",
+REXCVAR_DEFINE_BOOL(nx_trace_exports, false, "Switch",
                     "Trace every export (counts, first calls, the export each thread is inside "
                     "for the snapshots); false for measurement runs (export_stubs.h)");
 REXCVAR_DEFINE_BOOL(nx_disable_auto_sleep, true, "Switch",
@@ -151,7 +152,7 @@ REXCVAR_DEFINE_INT32(nx_nvmap_mb, 0, "Switch",
                      "leave libnx's (nfsmw-nx: 0x235C SharedMemoryTooSmall when it runs out)");
 REXCVAR_DEFINE_BOOL(nx_vk_dump_frames, false, "Switch",
                     "nx_gpu = vulkan: also write the guest output captured at 20, 40, 60, 120 "
-                    "and 240 s as PPM files in sdmc:/switch/theft4/frames (the capture and its "
+                    "and 240 s as PPM files in sdmc:/switch/ProjectTM/frames (the capture and its "
                     "pixel statistics are logged in any case)");
 REXCVAR_DEFINE_BOOL(nx_mount_cache, false, "Switch",
                     "Mount cache: and cache1: on the SD (run 12). Default false since run 21: "
@@ -194,14 +195,18 @@ REXCVAR_DEFINE_STRING(nx_exit_mode, "D", "Switch",
 
 namespace {
 
-constexpr const char* kRootDir = "sdmc:/switch/theft4";
-constexpr const char* kGameDir = "sdmc:/switch/theft4/game";
-constexpr const char* kLogPath = "sdmc:/switch/theft4/game.log";
-constexpr const char* kPreviousLogPath = "sdmc:/switch/theft4/game.prev.log";
-constexpr const char* kCrashPath = "sdmc:/switch/theft4/game-crash.log";
-constexpr const char* kConfigPath = "sdmc:/switch/theft4/game.toml";
-constexpr const char* kAltConfigPath = "sdmc:/switch/theft4/switch-game.toml";
-constexpr const char* kFrameDumpDir = "sdmc:/switch/theft4/frames";
+constexpr const char* kRootDir = "sdmc:/switch/ProjectTM";
+constexpr const char* kGameDir = "sdmc:/switch/ProjectTM/game";
+constexpr const char* kXexDir = "sdmc:/switch/ProjectTM/tu8";
+constexpr const char* kBuildId = "ProjectTM 0.2.0 GPL fork - mission transition";
+constexpr const char* kLogPath = "sdmc:/switch/ProjectTM/projecttm-0.2.0.log";
+constexpr const char* kPreviousLogPath =
+    "sdmc:/switch/ProjectTM/projecttm-0.2.0.prev.log";
+constexpr const char* kCrashPath =
+    "sdmc:/switch/ProjectTM/projecttm-0.2.0-crash.log";
+constexpr const char* kConfigPath = "sdmc:/switch/ProjectTM/fullruntime.toml";
+constexpr const char* kAltConfigPath = "sdmc:/switch/ProjectTM/switch-game.toml";
+constexpr const char* kFrameDumpDir = "sdmc:/switch/ProjectTM/frames";
 
 bool g_logging_ready = false;
 std::atomic<bool> g_stopped{false};
@@ -726,7 +731,7 @@ bool CrashFinalHandler(rex::arch::Exception* ex, void* /*data*/) {
 // The exit mode chosen at + (0 until then) and its step count. Each step
 // goes first to game-exit.log (nx_exit::Step: write + fsync on a descriptor
 // opened at start-up), then to game.log.
-constexpr const char* kExitStepPath = "sdmc:/switch/theft4/game-exit.log";
+constexpr const char* kExitStepPath = "sdmc:/switch/ProjectTM/projecttm-exit.log";
 char g_exit_mode = 0;
 int g_exit_step = 0;
 u64 g_exit_start_tick = 0;  // when the mode was chosen
@@ -939,7 +944,8 @@ void StartLogging() {
   config.extra_sinks.push_back(sink);
   g_logging_ready = true;
   rex::InitLogging(config);
-  GAME_INFO("switch-game: log %s, crash log %s", kLogPath, kCrashPath);
+  GAME_INFO("ProjectTM: log %s, crash log %s", kLogPath, kCrashPath);
+  GAME_INFO("build identity: %s", kBuildId);
   if (!policy_ok) {
     GAME_ERROR("diagnostics::Configure(logging): %s", policy_error.c_str());
   }
@@ -1023,21 +1029,18 @@ void StartLogging() {
 
 bool CheckGameFiles() {
   std::error_code ec;
-  const std::filesystem::path game(kGameDir);
-  const bool xex = std::filesystem::is_regular_file(game / "default.xex", ec);
-  const bool xexp = std::filesystem::exists(game / "default.xexp", ec);
-  const auto size = xex ? std::filesystem::file_size(game / "default.xex", ec) : 0;
-  GAME_INFO("game files in %s: default.xex %s (%" PRIu64 " bytes), default.xexp %s", kGameDir,
+  const std::filesystem::path xex_root(kXexDir);
+  const bool xex = std::filesystem::is_regular_file(xex_root / "default.xex", ec);
+  const bool xexp = std::filesystem::is_regular_file(xex_root / "default.xexp", ec);
+  const auto size = xex ? std::filesystem::file_size(xex_root / "default.xex", ec) : 0;
+  GAME_INFO("TU8 files in %s: default.xex %s (%" PRIu64 " bytes), default.xexp %s", kXexDir,
             xex ? "present" : "MISSING", uint64_t(size), xexp ? "PRESENT" : "absent");
   if (!xex) {
-    GAME_ERROR("copy the European default.xex (and the game data) to %s", kGameDir);
+    GAME_ERROR("copy the USA base default.xex and TU8 default.xexp to %s", kXexDir);
     return false;
   }
-  if (xexp) {
-    // The code was generated from the base executable; the loader would apply
-    // the patch and run code that no longer matches (06 section 2).
-    GAME_ERROR("remove %s/default.xexp: this build is generated from the base executable",
-               kGameDir);
+  if (!xexp) {
+    GAME_ERROR("TU8 default.xexp is missing from %s", kXexDir);
     return false;
   }
   return true;
@@ -2455,7 +2458,7 @@ void ProfileLog(const char* text) { GAME_INFO("%s", text); }
   padInitializeDefault(&g_pad);
   svcGetThreadId(&g_host_main_thread_id, CUR_THREAD_HANDLE);
   g_start_tick = armGetSystemTick();
-  ConsolePrint("Theft4 switch-game (no graphics)\n\n");
+  ConsolePrint("ProjectTM TU8 runtime\n\n");
 
   StartLogging();
   CaptureTerminations();
@@ -2571,7 +2574,10 @@ void ProfileLog(const char* text) { GAME_INFO("%s", text); }
   // Run 13 stopped at VdSetGraphicsInterruptCallback: without a graphics
   // object every Vd* export that needs one stops the run. The null GPU
   // consumes the ring and raises the interrupts without drawing.
-  if (REXCVAR_GET(nx_null_gpu)) {
+  // Vulkan and the null GPU are mutually exclusive. Older diagnostic builds
+  // created Vulkan and then replaced it with the default-enabled null GPU,
+  // leaving a visually headless run despite a successfully linked renderer.
+  if (!want_vulkan && REXCVAR_GET(nx_null_gpu)) {
     config.graphics = rex::system::CreateNullGraphicsSystem();
     GAME_INFO("graphics: null GPU (cvar nx_null_gpu)");
   } else {
@@ -2594,7 +2600,10 @@ void ProfileLog(const char* text) { GAME_INFO("%s", text); }
     };
     GAME_INFO("audio: the null audio system, frames dropped at the real rate (cvar nx_null_audio)");
   } else {
-    GAME_INFO("audio: none (nx_null_audio = false)");
+    config.audio_factory = [](rex::runtime::FunctionDispatcher* dispatcher) {
+      return rex::audio::nx::SwitchAudioSystem::Create(dispatcher);
+    };
+    GAME_INFO("audio: libnx audren stereo output (nx_null_audio = false)");
   }
   // InitializeKernel with a line on each side: run 9 ended between the
   // kernel host-task worker and SetupVfs, i.e. around here.
@@ -2603,10 +2612,13 @@ void ProfileLog(const char* text) { GAME_INFO("%s", text); }
     rex::kernel::InitializeKernel(runtime, kernel_state);
     GAME_INFO("kernel_init done; next in Setup: SetupVfs");
   };
-  GAME_INFO("about to Runtime::Setup(PPCImageConfig): code %08X+%X, image %08X+%X",
-            uint32_t(PPCImageConfig.code_base), uint32_t(PPCImageConfig.code_size),
-            uint32_t(PPCImageConfig.image_base), uint32_t(PPCImageConfig.image_size));
-  rex::X_STATUS status = runtime->Setup(PPCImageConfig, std::move(config));
+  // Generated symbols are project-prefixed by current ReXGlue codegen. Keep
+  // the launcher tied to the selected generated tree rather than to the old
+  // EU-only unprefixed symbol spelling.
+  GAME_INFO("about to Runtime::Setup(gta4_PPCImageConfig): code %08X+%X, image %08X+%X",
+            uint32_t(gta4_PPCImageConfig.code_base), uint32_t(gta4_PPCImageConfig.code_size),
+            uint32_t(gta4_PPCImageConfig.image_base), uint32_t(gta4_PPCImageConfig.image_size));
+  rex::X_STATUS status = runtime->Setup(gta4_PPCImageConfig, std::move(config));
   if (XFAILED(status)) {
     GAME_ERROR("Runtime::Setup failed, status %08X (see the [sdk] lines above)", status);
     WaitForPlusAndExit(&g_pad);
@@ -2622,7 +2634,7 @@ void ProfileLog(const char* text) { GAME_INFO("%s", text); }
 #if THEFT4_NX_VULKAN
   if (g_vulkan_graphics) {
     // As ReXApp does: the window, then the presenter Setup made on this thread.
-    g_window = rex::ui::Window::Create(*g_ui_context, "Theft4", rex::ui::NxWindow::kWidth,
+    g_window = rex::ui::Window::Create(*g_ui_context, "ProjectTM", rex::ui::NxWindow::kWidth,
                                        rex::ui::NxWindow::kHeight);
     if (!g_window || !g_window->Open()) {
       GAME_ERROR("Vulkan: the NWindow window did not open");
@@ -2647,8 +2659,20 @@ void ProfileLog(const char* text) { GAME_INFO("%s", text); }
     }
   }
 
-  GAME_INFO("about to LoadXexImage(game:/default.xex)");
-  status = runtime->LoadXexImage("game:/default.xex");
+  // Keep the large game data tree mounted as game:, but load the USA base
+  // XEX and its sibling TU8 patch from the existing ProjectTM/tu8 folder.
+  {
+    constexpr const char* kTu8Device = "\\Device\\ProjectTMTU8";
+    auto device = std::make_unique<rex::filesystem::HostPathDevice>(
+        kTu8Device, rex::filesystem::MakeAbsolute(std::filesystem::path(kXexDir)), false);
+    if (!device->Initialize() || !runtime->file_system()->RegisterDevice(std::move(device))) {
+      GAME_ERROR("failed to mount TU8 XEX directory %s", kXexDir);
+      WaitForPlusAndExit(&g_pad);
+    }
+    runtime->file_system()->RegisterSymbolicLink("tu8:", kTu8Device);
+  }
+  GAME_INFO("about to LoadXexImage(tu8:/default.xex), applying sibling default.xexp");
+  status = runtime->LoadXexImage("tu8:/default.xex");
   if (XFAILED(status)) {
     GAME_ERROR("LoadXexImage failed, status %08X", status);
     WaitForPlusAndExit(&g_pad);

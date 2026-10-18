@@ -33,9 +33,11 @@
 // are declared here.
 extern "C" VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vkGetInstanceProcAddr(VkInstance instance, const char* name);
+#if REX_PLATFORM_IOS
 extern "C" VKAPI_ATTR void VKAPI_CALL
 vkDestroyInstance(VkInstance instance,
                   const VkAllocationCallbacks* allocator);
+#endif
 #endif
 
 REXCVAR_DEFINE_BOOL(vulkan_log_debug_messages, true, "UI/Vulkan", "Log Vulkan debug messages");
@@ -81,9 +83,10 @@ std::unique_ptr<VulkanInstance> VulkanInstance::Create(const bool with_surface,
   loader_loaded = true;
 #elif REX_PLATFORM_NX
   // No loader and no dlopen in an NRO: NVK is inside the executable
-  // (vkCreateInstance this way: switch-smoke step 7 and nfsmw-nx).
+  // (vkCreateInstance this way: switch-smoke step 7 and nfsmw-nx).  The
+  // driver exports only vkGetInstanceProcAddr directly; vkDestroyInstance
+  // and the other instance functions are loaded from it after creation.
   ifn.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
-  ifn.vkDestroyInstance = &vkDestroyInstance;
   loader_loaded = true;
 #elif REX_PLATFORM_MAC
   const MacOSVulkanRuntimePaths macos_runtime_paths = DetectMacOSVulkanRuntimePaths();

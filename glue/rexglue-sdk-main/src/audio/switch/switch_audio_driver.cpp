@@ -61,7 +61,11 @@ bool SwitchAudioDriver::Initialize() {
   // (uses the latest supported rev, currently AUDREN_REVISION_6).
   const AudioRendererConfig ar_config = {
       .output_rate     = AudioRendererOutputRate_48kHz,
-      .num_voices      = 1,
+      // audrvVoiceInit consumes one renderer channel record per source
+      // channel. The guest frame is downmixed to an interleaved stereo
+      // source, so reserving only one channel makes the stereo voice
+      // initialization fail even though the renderer and sink are live.
+      .num_voices      = static_cast<int>(kOutputChannels),
       .num_effects     = 0,
       .num_sinks       = 1,
       .num_mix_objs    = 1,
@@ -124,20 +128,10 @@ bool SwitchAudioDriver::Initialize() {
     wavebufs_[i].state = AudioDriverWaveBufState_Done;
   }
 
-  // Initialize a single stereo voice at 48kHz PCM16.
-  if (!audrvVoiceInit(&audren_driver_, 0, static_cast<int>(kOutputChannels),
-                      PcmFormat_Int16, kFrameFrequency)) {
-    REXAPU_ERROR("audrvVoiceInit failed");
-    return false;
-  }
-  voice_initialized_ = true;
-
-  audrvVoiceSetDestinationMix(&audren_driver_, 0, AUDREN_FINAL_MIX_ID);
-  audrvVoiceSetMixFactor(&audren_driver_, 0, 1.0f, 0, 0);  // left  -> left
-  audrvVoiceSetMixFactor(&audren_driver_, 0, 1.0f, 1, 1);  // right -> right
-  audrvVoiceSetVolume(&audren_driver_, 0, 1.0f);
-
-  // STEP 5: Add a device sink for the default audio output.
+  // STEP 5: Add a device sink for the default audio output. libnx's audren
+  // sample publishes the pool/sink configuration and starts the renderer
+  // before initializing a voice. Initializing the voice earlier returns false
+  // on hardware because the attached pool has not been accepted yet.
   const u8 sink_channels[] = {0, 1};
   int sink_id = audrvDeviceSinkAdd(&audren_driver_, AUDREN_DEFAULT_DEVICE_NAME,
                                    static_cast<int>(kOutputChannels), sink_channels);
@@ -159,6 +153,20 @@ bool SwitchAudioDriver::Initialize() {
     REXAPU_ERROR("audrenStartAudioRenderer failed: 0x{:08X}", rc);
     return false;
   }
+
+  // Initialize a single stereo voice at 48kHz PCM16 after the renderer has
+  // accepted the pool and sink, matching libnx's audren-simple ordering.
+  if (!audrvVoiceInit(&audren_driver_, 0, static_cast<int>(kOutputChannels),
+                      PcmFormat_Int16, kFrameFrequency)) {
+    REXAPU_ERROR("audrvVoiceInit failed after renderer start");
+    return false;
+  }
+  voice_initialized_ = true;
+
+  audrvVoiceSetDestinationMix(&audren_driver_, 0, AUDREN_FINAL_MIX_ID);
+  audrvVoiceSetMixFactor(&audren_driver_, 0, 1.0f, 0, 0);  // left  -> left
+  audrvVoiceSetMixFactor(&audren_driver_, 0, 1.0f, 1, 1);  // right -> right
+  audrvVoiceSetVolume(&audren_driver_, 0, 1.0f);
 
   // No priority change here: this runs on the thread that registers the
   // audio client, i.e. the guest thread calling
@@ -306,11 +314,17 @@ void SwitchAudioDriver::ConvertAndSubmit(const float* input) {
   float stereo_float[kChannelSamples * kOutputChannels];
   conversion::sequential_6_BE_to_interleaved_2_LE(stereo_float, input, kChannelSamples);
 
+  // The shared Lo/Ro matrix is deliberately normalized for a pathological
+  // full-scale signal on every channel, leaving ordinary GTA IV music and
+  // dialogue too quiet on Switch. Restore output level after downmix and
+  // saturate only real peaks. Samples still come solely from guest XAudio/XMA.
+  constexpr float kOutputMakeupGain = 1.75f;
+
   // Convert float [-1.0, 1.0] to int16 and write into the current PCM buffer.
   int16_t* dest = pcm_buffers_[current_buf_];
   const size_t total_samples = kChannelSamples * kOutputChannels;
   for (size_t i = 0; i < total_samples; i++) {
-    float sample = stereo_float[i];
+    float sample = stereo_float[i] * kOutputMakeupGain;
     // Clamp to [-1.0, 1.0] then scale to int16 range.
     sample = std::fmax(-1.0f, std::fmin(1.0f, sample));
     dest[i] = static_cast<int16_t>(sample * 32767.0f);

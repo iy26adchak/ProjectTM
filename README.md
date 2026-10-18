@@ -1,8 +1,37 @@
-> **Thank you to everyone behind the unprecedented work on
-> [LibertyRecomp](https://github.com/OZORDI/LibertyRecomp) and the
-> [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk).** Without their
-> foundation, Theft4 would have taken much, much longer to reach this point.
-> Please support their projects and the upstream developers who made this work possible.
+# ProjectTM
+
+ProjectTM is an experimental Nintendo Switch homebrew port of Grand Theft Auto IV TU8. It combines statically recompiled Xbox 360 PowerPC code with the ReXGlue compatibility runtime, a Vulkan/NVK renderer, Switch input, storage, threading, and Audren audio services.
+
+The project is based on the Theft4-NX runtime and keeps its GPL-3.0 licensing. It is intended for research and lawful personal use. ProjectTM does not include game files, title updates, firmware, keys, saves, or Rockstar source code.
+
+## Current status
+
+The Switch runtime has reached the opening mission transition on tested hardware, including `Starting New Game` and `The Cousins Bellic`. The current work focuses on stability, audio reliability, rendering performance, input, saves, and progressing into the playable mission.
+
+This is experimental software. Hardware compatibility, performance, long-session stability, and gameplay completeness are not guaranteed.
+
+## Requirements
+
+- A Nintendo Switch capable of running homebrew and a devkitPro/libnx development environment.
+- A legally obtained Xbox 360 copy of Grand Theft Auto IV and the matching title update.
+- The game payload placed locally as described in the Switch build documentation.
+
+Never commit proprietary game data or generated build artifacts. See `.gitignore`.
+
+## Build
+
+The Switch build uses CMake, devkitA64, libnx, and the toolchain documented in `README-SWITCH.md` and `docs/switch-port/`. A clean rebuild is recommended after changing public headers or class layouts.
+
+```sh
+cmake -S . -B out/build/switch-tu8-vulkan -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE=toolchains/switch-libnx.cmake \
+  -DCMAKE_BUILD_TYPE=Release
+ninja -C out/build/switch-tu8-vulkan
+```
+
+## Legal and attribution
+
+ProjectTM is not affiliated with or endorsed by Rockstar Games, Take-Two Interactive, Microsoft, Nintendo, or Apple. See [`CREDITS.md`](CREDITS.md) for attribution and [`COPYING`](COPYING) for the GPL-3.0 license.
 
 <p align="center">
   <a href="https://www.paypal.com/donate/?hosted_button_id=XSBF9HXAS89EL"><img src="https://img.shields.io/badge/Support%20our%20work-Donate-0070ba?logo=paypal&logoColor=white" alt="Support our work via PayPal"></a>

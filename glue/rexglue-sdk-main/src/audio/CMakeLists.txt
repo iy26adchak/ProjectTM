@@ -5,6 +5,9 @@ if(REXGLUE_CORE_ONLY)
     # Embedded shells provide their own final audio device, but XMA decoding
     # and MMIO must remain identical to the desktop runtime.
     add_library(rexaudio OBJECT
+        # Platform backends still derive from these shared implementations.
+        audio_driver.cpp
+        audio_system.cpp
         handoff_trace.cpp
         # Null audio system: drives the guest audio engine without output
         null_audio_system.cpp
@@ -29,6 +32,13 @@ else()
     )
 endif()
 add_library(rex::audio ALIAS rexaudio)
+
+if(LIBERTY_RECOMP_TARGET_PLATFORM STREQUAL "switch")
+    target_sources(rexaudio PRIVATE
+        switch/switch_audio_system.cpp
+        switch/switch_audio_driver.cpp
+    )
+endif()
 
 if(APPLE AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
     target_sources(rexaudio PRIVATE
