@@ -16,6 +16,13 @@
 
 namespace rex::audio::nx {
 
+// SwitchAudioDriver is allocated in this translation unit. Keep the expected
+// Switch ABI layout explicit so a stale consumer cannot silently allocate the
+// old two-wave-buffer size after the public class grows again.
+static_assert(sizeof(SwitchAudioDriver) == 0x248,
+              "SwitchAudioDriver ABI changed; perform a clean rebuild and "
+              "update the verified allocation size");
+
 std::unique_ptr<AudioSystem> SwitchAudioSystem::Create(
     runtime::FunctionDispatcher* function_dispatcher) {
   return std::make_unique<SwitchAudioSystem>(function_dispatcher);

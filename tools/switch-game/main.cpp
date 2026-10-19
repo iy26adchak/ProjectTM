@@ -198,12 +198,12 @@ namespace {
 constexpr const char* kRootDir = "sdmc:/switch/ProjectTM";
 constexpr const char* kGameDir = "sdmc:/switch/ProjectTM/game";
 constexpr const char* kXexDir = "sdmc:/switch/ProjectTM/tu8";
-constexpr const char* kBuildId = "ProjectTM 0.2.0 GPL fork - mission transition";
-constexpr const char* kLogPath = "sdmc:/switch/ProjectTM/projecttm-0.2.0.log";
+constexpr const char* kBuildId = "ProjectTM 0.2.1 GPL fork - audio layout repair";
+constexpr const char* kLogPath = "sdmc:/switch/ProjectTM/projecttm-0.2.1.log";
 constexpr const char* kPreviousLogPath =
-    "sdmc:/switch/ProjectTM/projecttm-0.2.0.prev.log";
+    "sdmc:/switch/ProjectTM/projecttm-0.2.1.prev.log";
 constexpr const char* kCrashPath =
-    "sdmc:/switch/ProjectTM/projecttm-0.2.0-crash.log";
+    "sdmc:/switch/ProjectTM/projecttm-0.2.1-crash.log";
 constexpr const char* kConfigPath = "sdmc:/switch/ProjectTM/fullruntime.toml";
 constexpr const char* kAltConfigPath = "sdmc:/switch/ProjectTM/switch-game.toml";
 constexpr const char* kFrameDumpDir = "sdmc:/switch/ProjectTM/frames";

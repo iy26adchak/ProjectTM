@@ -13,7 +13,7 @@
 # At most 3 jobs: a generated file takes 1-2 GB of RAM in GCC.
 
 cmake_minimum_required(VERSION 3.25)
-project(switch-game VERSION 0.2.0 LANGUAGES C CXX ASM)
+project(switch-game VERSION 0.2.1 LANGUAGES C CXX ASM)
 
 if(NOT NINTENDO_SWITCH OR NOT LIBERTY_RECOMP_TARGET_PLATFORM STREQUAL "switch")
     message(FATAL_ERROR "switch-game is Switch-only: configure with toolchains/switch-libnx.cmake")
@@ -172,6 +172,6 @@ nx_generate_nacp(switch-game.nacp
     VERSION "${PROJECT_VERSION}"
 )
 nx_create_nro(switch-game
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ProjectTM-0.2.0-TU8-mission-transition.nro"
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ProjectTM-0.2.1-TU8-audio-layout-repair.nro"
     NACP switch-game.nacp
 )
