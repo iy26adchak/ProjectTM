@@ -1,3 +1,6 @@
+# THIS IS STILL A WORK IN PROGRESS
+# Nice thing is its going fast :)
+
 # ProjectTM
 
 ProjectTM is an attempt to bring the Xbox 360 version of **Grand Theft Auto IV**
