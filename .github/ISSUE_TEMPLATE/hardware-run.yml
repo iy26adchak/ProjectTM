@@ -1,0 +1,71 @@
+name: Hardware run report
+description: Report what a ProjectTM build did on a real Nintendo Switch
+title: "[Hardware] "
+labels:
+  - hardware
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing ProjectTM. Exact details help us distinguish game, renderer, audio and build problems.
+
+        Do not attach copyrighted GTA IV files, keys, firmware or title updates.
+  - type: input
+    id: version
+    attributes:
+      label: ProjectTM version
+      description: Use the embedded version or exact NRO filename.
+      placeholder: "0.2.2"
+    validations:
+      required: true
+  - type: input
+    id: hash
+    attributes:
+      label: NRO SHA-256
+      description: Leave blank only if you genuinely cannot calculate it.
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime in seconds
+      placeholder: "120"
+    validations:
+      required: true
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Outcome
+      options:
+        - Exited normally
+        - Closed by Plus/Minus
+        - Froze while Horizon remained responsive
+        - Froze the whole console
+        - Software closed due to an error
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: video
+    attributes:
+      label: What appeared on screen?
+      description: Mention the last visible logo, slideshow image, title card or game scene.
+    validations:
+      required: true
+  - type: textarea
+    id: audio
+    attributes:
+      label: What did you hear?
+      description: Mention silence, music, dialogue, static, stutter or volume level.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Attach the matching main and crash logs from sdmc:/switch/ProjectTM/logs/.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: Controller input, clock changes, repeatability, or differences between runs.

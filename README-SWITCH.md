@@ -5,15 +5,16 @@ full lineage and attribution are recorded in [PROJECTTM.md](PROJECTTM.md).
 Upstream historical documentation below is retained because it describes the
 runtime architecture ProjectTM inherits.
 
-This branch (`switch-port`) ports the Theft4 runtime to the Nintendo Switch as
+This repository ports the Theft4 runtime to the Nintendo Switch as
 **native homebrew**: an NRO built with devkitPro/libnx that runs on Horizon
 directly. There is no emulator in between, and the ahead-of-time recompiled
 game code is meant to run on the Switch's ARM64 cores like it does on iOS.
 
-**No game files are included in this repository. The game is not playable on
-Switch yet** (October 2026: it reaches gameplay with ReXGlue's emulated GPU on
-Vulkan at about 0.4 frames per second, see
-[06 §27](docs/switch-port/06-game-boot-plan.md)). To use this project you need your own legally obtained copy of
+**No game files are included in this repository. The port is not yet reliably
+playable.** The inherited runtime has reached the opening mission-title
+transition with real rendering and audio, but stability and performance remain
+active work. Earlier 0.4 FPS measurements in the historical design notes no
+longer describe the current runtime. To use this project you need your own legally obtained copy of
 Grand Theft Auto IV for Xbox 360. Nothing here downloads, contains or
 reconstructs game data, keys or console firmware.
 
@@ -29,7 +30,7 @@ Italian.
 | Guest memory | Design A: one address-space reservation, no aliased views, guest→host translation through a 256-entry table, 2 MiB blocks committed on demand. See [03](docs/switch-port/03-memory.md). The permission bug found in console run 4 is fixed and waits for the next run |
 | Threads | Core masks honoured, processor count from the process core mask, Xbox 360 CPUs mapped to cores 0–2 with core 3 kept for host workers, clean exit (timer thread stopped). See [04](docs/switch-port/04-threads-exit.md) |
 | Exceptions / MMIO | libnx exception handler wired to the runtime's handlers. Unrecognised MMIO in the 0x7F window has a proposed fix that is not implemented yet ([03 §12](docs/switch-port/03-memory.md)) |
-| Game boot | European base executable boots to gameplay (console run 20): null audio, the Switch controller as the 360 pad, ReXGlue's Vulkan backend on NVK at ~0.4 FPS |
+| Game boot | Logos, loading slideshow, `Starting New Game` and `The Cousins Bellic` have appeared on hardware through the inherited runtime. Audio and rendering work, but the route is not yet stable or playable. |
 
 ## Building
 

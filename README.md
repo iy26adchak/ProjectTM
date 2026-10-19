@@ -1,38 +1,105 @@
 # ProjectTM
 
-ProjectTM is a community project to bring the Xbox 360 version of Grand Theft Auto IV to Nintendo Switch homebrew.
+ProjectTM is an attempt to bring the Xbox 360 version of **Grand Theft Auto IV**
+to Nintendo Switch homebrew through static recompilation.
 
-The project began as a Switch-specific runtime written around the recompiled game code. That work taught us a lot about the Xbox memory layout, graphics commands, frame timing, streaming, and the services GTA IV expects. It also produced real rendered frames, loading screens, and a great deal of useful hardware data.
+This has been a long-running learning project. It began with a custom Switch
+runtime built around the recompiled game code. That version taught us a great
+deal about GTA IV's memory layout, streaming, Xbox services, GPU commands and
+frame timing, and eventually rendered the Rockstar logos and loading
+slideshow on real hardware.
 
-At some point it became clear that rebuilding the whole compatibility layer from scratch was slowing the project down. Theft4-NX already had a working ARM64 runtime and had reached the opening mission transition on hardware. ProjectTM therefore moved to that codebase as its foundation. The goal did not change: ProjectTM keeps its own name, Switch focus, fixes, experiments, and direction while building on a runtime that has already solved much of the difficult startup work.
+Rebuilding every compatibility service from scratch was taking more time than
+improving the game itself, so ProjectTM later moved to **Theft4-NX** as its
+runtime foundation. That project had already solved much of the ARM64 startup
+path. ProjectTM now combines that base with its own Switch fixes, hardware
+research and direction. The history changed; the goal did not.
 
-That transition is the main reason this repository exists. It brings the original ProjectTM work together with the Theft4-NX runtime, the ReXGlue services, and the lessons learned from the PC, Android, iOS, and other Switch recompilation projects.
+## Current state
 
-## Where it is now
+ProjectTM is still experimental and is **not yet a finished or reliably
+playable port**.
 
-The combined runtime has reached `Starting New Game` and `The Cousins Bellic` on tested Switch hardware, with real game rendering and audio in the working reference path. The next work is about making that path stable and practical: improving audio reliability, renderer speed, input, saves, and the transition into the playable mission.
+The inherited runtime has reached `Starting New Game` and `The Cousins Bellic`
+on a Nintendo Switch, with real GTA IV rendering and game-generated audio.
+Current work is focused on making that route stable, restoring video after a
+clean rebuild, improving audio output and continuing into the playable opening
+mission.
 
-This is an active development project, so hardware results can change as the runtime is improved. The repository is mainly for development, testing, and sharing the work with other people interested in recompilation and Switch ports.
+The latest source version is **0.2.2**. It includes:
 
-## Getting started
+- a clean four-buffer Switch audio driver with a verified class layout;
+- 2.5x output gain with safe sample saturation;
+- a Vulkan/NVK compatibility fix for the Xenos color format that caused 0.2.1
+  to present black frames;
+- all 246 required Xbox imports and all 85 generated GTA IV translation units.
 
-You need a homebrew-capable Nintendo Switch, a devkitPro/libnx development environment, and your own legally obtained Xbox 360 copy of GTA IV with its matching title update. Game files, saves, firmware, keys, and other copyrighted material are not included.
+Version 0.2.2 is built and locally verified, but its video fix still needs a
+hardware run. Development notes for each version live in the
+[`BUILD-PROJECTTM-*.md`](BUILD-PROJECTTM-0.2.2.md) files.
 
-The Switch toolchain and platform notes are documented in `README-SWITCH.md` and `docs/switch-port/`. A normal source build looks like this:
+## What you need
+
+- A homebrew-capable Nintendo Switch.
+- A devkitPro/libnx development environment.
+- Your own legally obtained Xbox 360 copy of GTA IV and matching title update.
+- The generated static-recompilation sources and a Switch NVK SDK checkout.
+
+This repository does **not** contain game assets, the Xbox executable, title
+updates, encryption keys, firmware or saves. It does not download them either.
+
+## Building the Switch version
+
+The Switch app is built from `tools/switch-game`, not from the repository root.
+The paths below are examples; point them at your own generated source and NVK
+SDK directories.
 
 ```sh
-cmake -S . -B out/build/switch-tu8-vulkan -G Ninja \
-  -DCMAKE_TOOLCHAIN_FILE=toolchains/switch-libnx.cmake \
-  -DCMAKE_BUILD_TYPE=Release
-ninja -C out/build/switch-tu8-vulkan
+export DEVKITPRO=/opt/devkitpro
+
+cmake -S tools/switch-game -B out/build/projecttm-switch \
+  -G "Unix Makefiles" \
+  -DCMAKE_MAKE_PROGRAM=/usr/bin/make.exe \
+  -DCMAKE_TOOLCHAIN_FILE="$PWD/toolchains/switch-libnx.cmake" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DTHEFT4_GENERATED_DIR=/path/to/GTA-IV-RECOMP-XBOX-360/generated/default \
+  -DTHEFT4_SWITCH_GAME_VULKAN=ON \
+  -DTHEFT4_SWITCH_NVK_SDK=/path/to/nvk-switch-sdk
+
+make -C out/build/projecttm-switch -j2
 ```
 
-For a clean rebuild after changing public headers or class layouts, remove the selected build directory first.
+When a public header or class layout changes, use a new build directory. A
+partially reused build once mixed two different audio-driver layouts and
+corrupted the heap, so clean builds are not optional for ABI changes.
 
-## Thanks
+More platform notes are in [`README-SWITCH.md`](README-SWITCH.md). The older
+research documents under [`docs/switch-port/`](docs/switch-port/) are retained
+because they explain how the port reached its present architecture, but some
+milestone descriptions there are historical.
 
-ProjectTM stands on the work of many projects and contributors. The separate [`CREDITS.md`](CREDITS.md) file lists them and explains how they fit into the project.
+## Testing and reporting problems
 
-ProjectTM is released under GPL-3.0 where applicable. Vendored dependencies keep their own licenses; see [`COPYING`](COPYING).
+Hardware reports are most useful when they include:
 
-ProjectTM is not affiliated with Rockstar Games, Take-Two Interactive, Microsoft, Nintendo, or Apple.
+- the exact ProjectTM version and NRO hash;
+- how many seconds the app ran;
+- what appeared on screen and what was heard;
+- whether it exited normally, froze or showed Horizon's error dialog;
+- the main and crash logs from `sdmc:/switch/ProjectTM/logs/`.
+
+Please do not report results from a renamed or unknown NRO as though its build
+identity were known. Reproducible evidence is more valuable than a guess.
+
+## Credits and license
+
+ProjectTM stands on years of work by the Theft4, Theft4-NX,
+LibertyRecompAndroid, LibertyRecomp, ReXGlue, Xenia, XenonRecomp, nfsmw-nx,
+project8-sw, Mesa/NVK, devkitPro and libnx communities. See
+[`CREDITS.md`](CREDITS.md) for links and details.
+
+ProjectTM is distributed under GPL-3.0 where applicable. Vendored dependencies
+retain their own licenses; see [`COPYING`](COPYING).
+
+ProjectTM is not affiliated with or endorsed by Rockstar Games, Take-Two
+Interactive, Microsoft or Nintendo.

@@ -35,10 +35,11 @@ endorsed by Rockstar Games or Take-Two Interactive.
 
 ## Current Switch milestone
 
-The imported runtime has reached `Starting New Game` and `The Cousins Bellic`
-on hardware with genuine game audio and rendering. ProjectTM 0.2.0 carries the
-first post-mission-title stability repair: it handles the duplicate retail
-render-state dispatch in the same way as the two independently working ARM64
-references, expands the Switch audio runway and reduces default tracing cost.
-Gameplay beyond that transition still requires hardware validation.
+The inherited runtime has reached `Starting New Game` and `The Cousins Bellic`
+on hardware with genuine game audio and rendering. ProjectTM 0.2.1 repaired a
+clean-build audio ABI mismatch and produced much clearer audio, while exposing
+a black-video regression. ProjectTM 0.2.2 normalizes the affected Xenos color
+format in the Vulkan renderer and raises output gain to 2.5x. That build is
+compiled and verified locally; its video repair still needs a hardware run.
+Gameplay beyond the mission-title transition remains unfinished.
 

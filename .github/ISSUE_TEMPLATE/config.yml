@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Project status and build instructions
+    url: https://github.com/iy26adchak/ProjectTM#readme
+    about: Read the current status before opening a hardware report.
