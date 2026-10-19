@@ -2193,6 +2193,26 @@ void VulkanCommandProcessor::ShutdownContext() {
 }
 
 void VulkanCommandProcessor::WriteRegister(uint32_t index, uint32_t value) {
+  // GTA IV creates its HDR color surface with the packed 7e3 storage format,
+  // but expects the extended blending-precision alias used by the retail
+  // driver. Both encodings have identical 32-bit EDRAM storage (see
+  // GetStorageColorFormat), though selecting the plain alias loses the
+  // extended color-output path on NVK and resolves an entirely black image.
+  // Normalize at register ingestion so drawing, EDRAM ownership and resolve
+  // all observe one coherent format. The hardware-proven v4r1 run used 12->6;
+  // the clean 0.2.1 build exposed the incompatible 3->6 path.
+  if (index == XE_GPU_REG_RB_COLOR_INFO || index == XE_GPU_REG_RB_COLOR1_INFO ||
+      index == XE_GPU_REG_RB_COLOR2_INFO || index == XE_GPU_REG_RB_COLOR3_INFO) {
+    constexpr uint32_t kColorFormatShift = 16;
+    constexpr uint32_t kColorFormatMask = 0xFu << kColorFormatShift;
+    constexpr uint32_t kPackedFloat =
+        uint32_t(xenos::ColorRenderTargetFormat::k_2_10_10_10_FLOAT);
+    constexpr uint32_t kExtendedBlend =
+        uint32_t(xenos::ColorRenderTargetFormat::k_2_10_10_10_FLOAT_AS_16_16_16_16);
+    if (((value & kColorFormatMask) >> kColorFormatShift) == kPackedFloat) {
+      value = (value & ~kColorFormatMask) | (kExtendedBlend << kColorFormatShift);
+    }
+  }
   CommandProcessor::WriteRegister(index, value);
 
   if (index >= XE_GPU_REG_SHADER_CONSTANT_000_X && index <= XE_GPU_REG_SHADER_CONSTANT_511_W) {

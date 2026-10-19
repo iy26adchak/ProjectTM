@@ -318,7 +318,7 @@ void SwitchAudioDriver::ConvertAndSubmit(const float* input) {
   // full-scale signal on every channel, leaving ordinary GTA IV music and
   // dialogue too quiet on Switch. Restore output level after downmix and
   // saturate only real peaks. Samples still come solely from guest XAudio/XMA.
-  constexpr float kOutputMakeupGain = 1.75f;
+  constexpr float kOutputMakeupGain = 2.5f;
 
   // Convert float [-1.0, 1.0] to int16 and write into the current PCM buffer.
   int16_t* dest = pcm_buffers_[current_buf_];
